@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tanso SDK Example</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #222; }
+    header { background: #111; color: #fff; padding: 16px 24px; }
+    header h1 { font-size: 18px; font-weight: 600; }
+    main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+    nav { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    nav button { padding: 8px 16px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; font-size: 14px; }
+    nav button.active { background: #111; color: #fff; border-color: #111; }
+    section { display: none; }
+    section.active { display: block; }
+    .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .card h3 { margin-bottom: 8px; font-size: 16px; }
+    .card p { font-size: 13px; color: #555; margin-bottom: 4px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .badge-green { background: #d4edda; color: #155724; }
+    .badge-red { background: #f8d7da; color: #721c24; }
+    .badge-blue { background: #cce5ff; color: #004085; }
+    form { display: flex; flex-direction: column; gap: 10px; max-width: 400px; }
+    label { font-size: 13px; font-weight: 600; }
+    input, select { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+    button[type="submit"], .btn { padding: 10px 16px; background: #111; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    button[type="submit"]:hover, .btn:hover { background: #333; }
+    .result { background: #f0f0f0; border-radius: 6px; padding: 12px; margin-top: 12px; font-size: 13px; white-space: pre-wrap; word-break: break-all; font-family: monospace; max-height: 300px; overflow-y: auto; }
+    .feat-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    .feat-table th, .feat-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+    .feat-table th { font-weight: 600; color: #555; }
+    .row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+    .row > * { flex: 1; min-width: 160px; }
+    .row .btn { flex: 0; align-self: end; }
+    #loading { text-align: center; padding: 24px; color: #888; }
+    .price { font-size: 20px; font-weight: 700; }
+    .interval { font-size: 13px; color: #888; }
+  </style>
+</head>
+<body>
+  <header><h1>Tanso SDK Example</h1></header>
+  <main>
+    <!--
+      Navigation tabs — each button's data-tab attribute corresponds
+      to a <section> id below. The app.js tab switcher uses these
+      to show/hide sections.
+    -->
+    <nav id="nav">
+      <button data-tab="plans" class="active">Plans</button>
+      <button data-tab="onboard">Onboard Customer</button>
+      <button data-tab="subscribe">Subscribe</button>
+      <button data-tab="entitlements">Entitlements</button>
+      <button data-tab="usage">Usage Events</button>
+      <button data-tab="credits">Credits</button>
+    </nav>
+
+    <!--
+      ═══════════════════════════════════════════════════════════
+      TAB 1: Plans
+      SDK method: tanso.plans.list()
+
+      Shows all plans in your Tanso account with their features
+      and pricing rules. This is what you'd use to build a
+      public pricing page.
+      ═══════════════════════════════════════════════════════════
+    -->
+    <section id="plans" class="active">
+      <h2>Available Plans</h2>
+      <p style="color:#888;font-size:13px;margin-bottom:12px">Fetched via <code>tanso.plans.list()</code></p>
+      <div id="plans-list"><div id="loading">Loading plans...</div></div>
+    </section>
+
+    <!--
+      ═══════════════════════════════════════════════════════════
+      TAB 2: Onboard Customer
+      SDK method: tanso.customers.create()
+
+      Create a customer in Tanso that maps to a user in your app.
+      The customerReferenceId is YOUR user ID — use the same ID
+      from your auth system or database.
+      ═══════════════════════════════════════════════════════════
+    -->
+    <section id="onboard">
+      <h2>Create Customer</h2>
+      <p style="color:#888;font-size:13px;margin-bottom:12px">Uses <code>tanso.customers.create()</code></p>
+      <form id="onboard-form">
+        <!--
+          customerReferenceId: Your unique ID for this user.
+          This is the primary key you'll use in all SDK calls.
+          Use your own user ID / auth ID here.
+        -->
+        <label>Customer Reference ID</label>
+        <input name="customerReferenceId" required placeholder="e.g. user_123">
+        <!-- email is the only other required field -->
+        <label>Email</label>
+        <input name="email" type="email" required placeholder="jane@example.com">
+        <!-- firstName and lastName are optional -->
+        <label>First Name</label>
+        <input name="firstName" placeholder="Jane">
+        <label>Last Name</label>
+        <input name="lastName" placeholder="Doe">
+        <button type="submit">Create Customer</button>
+      </form>
+      <!-- Raw JSON response displayed here -->
+      <div id="onboard-result" class="result" hidden></div>
+    </section>
+
+    <!--
+      ═══════════════════════════════════════════════════════════
+      TAB 3: Subscribe
+      SDK method: tanso.subscriptions.create()
+
+      Subscribe a customer to a plan. This grants them access to
+      all features on the plan and allocates any credits.
+      The plan dropdown is auto-populated from tanso.plans.list().
+      ═══════════════════════════════════════════════════════════
+    -->
+    <section id="subscribe">
+      <h2>Create Subscription</h2>
+      <p style="color:#888;font-size:13px;margin-bottom:12px">Uses <code>tanso.subscriptions.create()</code></p>
+      <form id="subscribe-form">
+        <!-- Must match a customerReferenceId you already created -->
+        <label>Customer Reference ID</label>
+        <input name="customerReferenceId" required placeholder="user_123">
+        <!-- Plan dropdown populated dynamically from the plans API -->
+        <label>Plan</label>
+        <select name="planId" id="plan-select"><option value="">Loading plans...</option></select>
+        <button type="submit">Subscribe</button>
+      </form>
+      <!-- Shows the subscription + invoice response -->
+      <div id="subscribe-result" class="result" hidden></div>
+    </section>
+
+    <!--
+      ═══════════════════════════════════════════════════════════
+      TAB 4: Entitlements
+      SDK methods: tanso.entitlements.list(), tanso.entitlements.check()
+
+      Two modes:
+      A) "Load All" — list every feature entitlement for a customer,
+         grouped by subscription. Good for dashboards.
+      B) "Check Single" — check one specific feature. Returns detailed
+         info including usage counts, credit balances, and the
+         allowed/denied decision. Good for real-time feature gating.
+      ═══════════════════════════════════════════════════════════
+    -->
+    <section id="entitlements">
+      <h2>Check Entitlements</h2>
+      <p style="color:#888;font-size:13px;margin-bottom:12px">Uses <code>tanso.entitlements.list()</code> and <code>tanso.entitlements.check()</code></p>
+
+      <!-- Mode A: List all entitlements for a customer -->
+      <div class="row">
+        <div><label>Customer Reference ID</label><input id="ent-customer" placeholder="user_123"></div>
+        <button class="btn" onclick="loadEntitlements()">Load All</button>
+      </div>
+      <div id="ent-list" style="margin-top:16px"></div>
+
+      <hr style="margin:20px 0">
+
+      <!-- Mode B: Check a single feature for a customer -->
+      <h3>Check Single Feature</h3>
+      <div class="row" style="margin-top:8px">
+        <div><label>Customer ID</label><input id="ent-check-customer" placeholder="user_123"></div>
+        <!--
+          featureKey: the machine-readable key of the feature to check.
+          Must match a feature key defined in your Tanso account
+          (e.g. "api_access", "ai_generation", "export_csv").
+        -->
+        <div><label>Feature Key</label><input id="ent-check-feature" placeholder="api_access"></div>
+        <button class="btn" onclick="checkEntitlement()">Check</button>
+      </div>
+      <!-- Raw JSON response — shows allowed, usage, credit, meta fields -->
+      <div id="ent-check-result" class="result" hidden></div>
+    </section>
+
+    <!--
+      ═══════════════════════════════════════════════════════════
+      TAB 5: Usage Events
+      SDK method: tanso.events.ingest()
+
+      Send a usage event whenever a customer performs a metered
+      action. Events are deduplicated by eventIdempotencyKey,
+      so retries are safe.
+
+      If the feature has a usage limit (maxUsage), the response
+      will indicate whether the limit was exceeded.
+      ═══════════════════════════════════════════════════════════
+    -->
+    <section id="usage">
+      <h2>Ingest Usage Event</h2>
+      <p style="color:#888;font-size:13px;margin-bottom:12px">Uses <code>tanso.events.ingest()</code></p>
+      <form id="usage-form">
+        <label>Customer Reference ID</label>
+        <input name="customerReferenceId" required placeholder="user_123">
+        <!-- eventName: a label for the type of action (e.g. "api_call") -->
+        <label>Event Name</label>
+        <input name="eventName" required placeholder="api_call">
+        <!--
+          featureKey (optional): links this event to a specific feature
+          for usage tracking and limit enforcement. If omitted, the
+          event is recorded but won't count toward any feature's limit.
+        -->
+        <label>Feature Key (optional)</label>
+        <input name="featureKey" placeholder="api_access">
+        <!-- usageUnits: quantity consumed (default 1) -->
+        <label>Usage Units</label>
+        <input name="usageUnits" type="number" value="1" min="1">
+        <button type="submit">Send Event</button>
+      </form>
+      <!-- Response shows { usageLimitExceeded, message } -->
+      <div id="usage-result" class="result" hidden></div>
+    </section>
+
+    <!--
+      ═══════════════════════════════════════════════════════════
+      TAB 6: Credits
+      SDK method: tanso.credits.listPools()
+
+      Shows credit pool balances for a customer. Pools are created
+      automatically when a plan with credit allocations is subscribed.
+      Each pool tracks balance, grants, consumption, and expiry.
+      ═══════════════════════════════════════════════════════════
+    -->
+    <section id="credits">
+      <h2>Credit Pools</h2>
+      <p style="color:#888;font-size:13px;margin-bottom:12px">Uses <code>tanso.credits.listPools()</code></p>
+      <div class="row">
+        <div><label>Customer Reference ID</label><input id="credit-customer" placeholder="user_123"></div>
+        <button class="btn" onclick="loadCredits()">Load</button>
+      </div>
+      <div id="credit-list" style="margin-top:16px"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
